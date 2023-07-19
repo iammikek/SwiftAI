@@ -4,23 +4,49 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/php
 
 trigger:
-- main
+  - main
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'Ubuntu-16.04'
 
 variables:
   phpVersion: 8.1
 
 steps:
-- script: |
-    sudo update-alternatives --set php /usr/bin/php$(phpVersion)
-    sudo update-alternatives --set phar /usr/bin/phar$(phpVersion)
-    sudo update-alternatives --set phpdbg /usr/bin/phpdbg$(phpVersion)
-    sudo update-alternatives --set php-cgi /usr/bin/php-cgi$(phpVersion)
-    sudo update-alternatives --set phar.phar /usr/bin/phar.phar$(phpVersion)
-    php -version
-  displayName: 'Use PHP version $(phpVersion)'
+  - script: |
+      sudo update-alternatives --set php /usr/bin/php$(phpVersion)
+      sudo update-alternatives --set phar /usr/bin/phar$(phpVersion)
+      sudo update-alternatives --set phpdbg /usr/bin/phpdbg$(phpVersion)
+      sudo update-alternatives --set php-cgi /usr/bin/php-cgi$(phpVersion)
+      sudo update-alternatives --set phar.phar /usr/bin/phar.phar$(phpVersion)
+      sudo apt-get install php$(phpVersion)-imagick php$(phpVersion)-bcmath php$(phpVersion)-mbstring php$(phpVersion)-curl php$(phpVersion)-gd php$(phpVersion)-zip php$(phpVersion)-dom
+      php -version
+    displayName: 'Setting up PHP, version $(phpVersion)'
 
-- script: composer install --no-interaction --prefer-dist
-  displayName: 'composer install'
+  - script: |
+      curl -sL https://deb.nodesource.com/setup_11.x | sudo -E bash -
+      sudo apt-get install -y build-essential debconf-utils screen nodejs google-chrome-stable
+    displayName: 'Installing System Dependencies'
+
+  - script: |
+      sudo apt-get -y remove composer
+      sudo wget https://getcomposer.org/composer.phar -O /usr/local/bin/composer
+      sudo chmod +x /usr/local/bin/composer
+      export PATH=$PATH:~/usr/local/bin/
+      sudo composer self-update
+      composer --version
+      composer install --no-interaction --prefer-dist --no-suggest
+    displayName: 'Installing Package Dependencies'
+
+  - script: |
+      touch database/database.sqlite
+      cp .env.example .env && php artisan key:generate
+    displayName: 'Setting Up Application Environment'
+
+  - script: |
+      screen -d -m google-chrome-stable --headless --disable-gpu --disable-dev-shm-usage --disable-software-rasterizer --remote-debugging-port=9222 http://localhost &
+      screen -d -m php artisan serve &
+    displayName: 'Starting Chrome and the Web Server'
+
+  - script: vendor/bin/phpunit --testdox --verbose
+    displayName: 'Running Unit Test'
