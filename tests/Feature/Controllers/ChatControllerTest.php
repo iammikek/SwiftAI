@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Controllers;
 
+use App\Models\Chat;
 use App\Models\Conversation;
 use App\Models\Personality;
 use App\Models\User;
@@ -22,8 +23,8 @@ class ChatControllerTest extends TestCase
             ->actingAs($user)
             ->postJson('/send-message', [])->assertUnprocessable()
             ->assertJson([
-                "conversation_id" => [
-                    "The conversation id field is required."
+                'conversation_id' => [
+                    'The conversation id field is required.',
                 ],
             ]);
     }
@@ -39,9 +40,9 @@ class ChatControllerTest extends TestCase
                     [
                         'message' => [
                             'content' => 'some reply',
-                        ]
-                    ]
-                ]
+                        ],
+                    ],
+                ],
             ]),
         ]);
 
@@ -49,16 +50,15 @@ class ChatControllerTest extends TestCase
             ->actingAs($user)
             ->postJson('/send-message', [
                 'conversation_id' => $conversation->id,
-                'message' => 'Some Message'
+                'message' => 'Some Message',
             ])
             ->assertSuccessful()
             ->assertJson([
-                "reply" => 'some reply',
+                'reply' => 'some reply',
                 'messageCount' => 2,
 
             ]);
     }
-
 
     /** @test */
     public function test_can_create_new_conversation_fails_validation()
@@ -69,12 +69,12 @@ class ChatControllerTest extends TestCase
             ->actingAs($user)
             ->postJson('/new-conversation', [])->assertUnprocessable()
             ->assertJson([
-                "title" => [
-                    "The title field is required."
+                'title' => [
+                    'The title field is required.',
                 ],
-                "personality_id" => [
-                    "The personality id field is required."
-                ]
+                'personality_id' => [
+                    'The personality id field is required.',
+                ],
             ]);
     }
 
@@ -93,8 +93,8 @@ class ChatControllerTest extends TestCase
             ->postJson('/new-conversation', $payload)
             ->assertSuccessful()
             ->assertJsonFragment($payload + [
-                    'user_id' => $user->id
-                ]);
+                'user_id' => $user->id,
+            ]);
     }
 
     /** @test */
@@ -111,7 +111,6 @@ class ChatControllerTest extends TestCase
             ->getJson('/get-conversations')
             ->assertSuccessful()
             ->assertJsonFragment($conversations->first()->toArray());
-
     }
 
     /** @test */
@@ -123,9 +122,31 @@ class ChatControllerTest extends TestCase
 
         $this
             ->actingAs($user)
-            ->getJson('/get-messages/' . $currentConversation->id . '/message-count')
+            ->getJson('/get-messages/'.$currentConversation->id.'/message-count')
             ->assertSuccessful()
             ->assertJsonStructure(['count']);
+    }
+
+    /** @test */
+    public function test_can_get_messages_for_conversation()
+    {
+        $user = User::factory()->create();
+
+        $currentConversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $chats = Chat::factory()->count(3)->create([
+            'user_id' => $user->id,
+            'conversation_id' => $currentConversation->id,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->getJson('/get-messages/'.$currentConversation->id)
+            ->assertSuccessful()
+            ->dump()
+            ->assertJsonStructure(['chats']);
     }
 
     /** @test */
@@ -138,7 +159,6 @@ class ChatControllerTest extends TestCase
         $this
             ->actingAs($user)
             ->getJson('/personalities')->assertSuccessful()
-            ->dump()
             ->assertJsonFragment($personalities->first()->toArray());
     }
 }
