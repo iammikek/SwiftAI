@@ -40,7 +40,7 @@ steps:
 
   - script: |
       touch database/database.sqlite
-      cp .env.example .env && php artisan key:generate
+      cp .env.example .env && php artisan key:generate && php artisan storage:link
     displayName: 'Setting Up Application Environment'
 
   - script: |
