@@ -5,6 +5,7 @@
 
 trigger:
   - main
+  - chore/*
 
 pool:
   vmImage: 'ubuntu-latest'
